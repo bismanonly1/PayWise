@@ -1,6 +1,6 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../work_ledger/presentation/screens/add_shift_screen.dart';
 
 import '../cubit/health_cubit.dart';
 
@@ -33,21 +33,28 @@ class DashboardScreen extends StatelessWidget {
                 const SizedBox(height: 16),
                 const Text(
                   'Welcome to PayWise',
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  'Backend: ${state.status ?? "Not checked"}',
-                ),
+                Text('Backend: ${state.status ?? "Not checked"}'),
                 const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: () {
                     context.read<HealthCubit>().checkConnection();
                   },
                   child: const Text('Check Connection'),
+                ),
+                const SizedBox(height: 20),
+                FilledButton.icon(
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Shift'),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AddShiftScreen(),
+                      ),
+                    );
+                  },
                 ),
               ],
             );
