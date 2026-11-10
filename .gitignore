@@ -5,3 +5,9 @@
 .venv/
 __pycache__/
 *.pyc
+
+# Local payroll database
+*.db
+*.db-journal
+*.db-shm
+*.db-wal

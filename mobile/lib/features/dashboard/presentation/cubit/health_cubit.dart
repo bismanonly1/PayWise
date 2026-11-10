@@ -1,5 +1,5 @@
-
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../data/health_repository.dart';
 
 class HealthState {
@@ -7,11 +7,7 @@ class HealthState {
   final String? status;
   final String? error;
 
-  const HealthState({
-    this.isLoading = false,
-    this.status,
-    this.error,
-  });
+  const HealthState({this.isLoading = false, this.status, this.error});
 }
 
 class HealthCubit extends Cubit<HealthState> {

@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
@@ -17,16 +16,12 @@ class PayWiseApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => HealthCubit(
-        HealthRepository(http.Client()),
-      )..checkConnection(),
+      create: (_) =>
+          HealthCubit(HealthRepository(http.Client()))..checkConnection(),
       child: MaterialApp(
         title: 'PayWise',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorSchemeSeed: Colors.teal,
-          useMaterial3: true,
-        ),
+        theme: ThemeData(colorSchemeSeed: Colors.teal, useMaterial3: true),
         home: const DashboardScreen(),
       ),
     );
