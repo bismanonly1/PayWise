@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.shifts import router as shifts_router
+
 
 app = FastAPI(
     title="PayWise API",
@@ -7,12 +9,14 @@ app = FastAPI(
     description="Personal payroll verification backend"
 )
 
+app.include_router(shifts_router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"^http://(localhost|127\.0\.0\.1):\d+$",
     allow_credentials=False,
-    allow_methods=["GET"],
-    allow_headers=["*"]
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
 )
 
 @app.get("/")
