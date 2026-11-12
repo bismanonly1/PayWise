@@ -26,6 +26,14 @@ def build_shift_response(row: dict) -> dict:
         **calculations,
     }
 
+@router.post("/preview")
+def preview_shift(shift: ShiftInput):
+    return calculate_shift_pay(
+        start_time=shift.start_time,
+        end_time=shift.end_time,
+        unpaid_break_minutes=shift.unpaid_break_minutes,
+        hourly_rate=shift.hourly_rate
+    )
 
 @router.post("", status_code=201)
 def create_shift(shift: ShiftInput):

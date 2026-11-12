@@ -42,4 +42,27 @@ class ShiftRepository {
 
     return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
+
+  Future<Map<String, dynamic>> previewShift(WorkShift shift) async {
+  final response = await client.post(
+    Uri.parse('$baseUrl/shifts/preview'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({
+      'location': shift.location,
+      'start_time': shift.startTime.toIso8601String(),
+      'end_time': shift.endTime.toIso8601String(),
+      'unpaid_break_minutes': shift.unpaidBreakMinutes,
+      'hourly_rate': shift.hourlyRate,
+    }),
+  );
+
+  if (response.statusCode != 200) {
+    throw Exception(
+      'Unable to calculate shift: '
+      '${response.statusCode} ${response.body}',
+    );
+  }
+
+  return jsonDecode(response.body) as Map<String, dynamic>;
+}
 }

@@ -22,9 +22,55 @@ class _AddShiftScreenState extends State<AddShiftScreen> {
   bool endsNextDay = false;
   bool isSaving = false;
 
+  Map<String, dynamic>? previewResult;
+  bool isCalculating = false;
+  int formVersion = 0;
   WorkShift? previewShift;
   String? errorMessage;
 
+  Future<void> calculateShift() async {
+    if (isCalculating || isSaving) return;
+
+    final shift = buildValidatedShift();
+    if (shift == null) return;
+
+    final requestVersion = formVersion;
+
+    setState(() {
+        isCalculating = true;
+        previewShift = null;
+        previewResult = null;
+        errorMessage = null;
+    });
+
+    final client = http.Client();
+
+    try {
+        final result = await ShiftRepository(client).previewShift(shift);
+
+        if (!mounted || requestVersion != formVersion) return;
+
+        setState(() {
+        previewShift = shift;
+        previewResult = result;
+        });
+    } catch (error) {
+        if (!mounted || requestVersion != formVersion) return;
+
+        setState(() {
+            errorMessage = error.toString();
+        });
+    } finally {
+        client.close();
+
+        if (mounted) {
+            setState(() {
+            isCalculating = false;
+        });
+        }
+    }
+    }
+  
   Future<void> selectDate() async {
     final date = await showDatePicker(
       context: context,
@@ -60,14 +106,21 @@ class _AddShiftScreenState extends State<AddShiftScreen> {
   }
 
   Future<void> saveShift() async {
-    calculateShift();
+    if (isSaving || isCalculating) return;
 
     final shift = previewShift;
-    if (shift == null) return;
+    
+    if (shift == null || previewResult == null) {
 
     setState(() {
-      isSaving = true;
-      errorMessage = null;
+      errorMessage = 'Calculate the shift before saving.';
+    });
+    return;
+    }
+
+    setState(() {
+        isSaving = true;
+        errorMessage = null;
     });
 
     final client = http.Client();
@@ -78,7 +131,11 @@ class _AddShiftScreenState extends State<AddShiftScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Shift #${saved['id']} saved successfully')),
+        SnackBar(content: Text('Shift #${saved['id']} saved.'
+                                'Gross base pay: '
+                                '\$${(saved['gross_base_pay'] as num).toStringAsFixed(2)} CAD',
+                                ),
+                                ),
       );
 
       Navigator.pop(context, true);
@@ -99,7 +156,16 @@ class _AddShiftScreenState extends State<AddShiftScreen> {
     }
   }
 
-  void calculateShift() {
+  void invalidatePreview() {
+    setState(() {
+        formVersion++;
+        previewShift = null;
+        previewResult = null;
+        errorMessage = null;
+    });
+  }
+
+  WorkShift? buildValidatedShift() {
     final unpaidBreak = int.tryParse(breakController.text);
     final hourlyRate = double.tryParse(rateController.text);
 
@@ -113,7 +179,7 @@ class _AddShiftScreenState extends State<AddShiftScreen> {
         previewShift = null;
         errorMessage = 'Enter a location, valid break and hourly rate.';
       });
-      return;
+      return null;
     }
 
     final start = combineDateAndTime(selectedDate, startTime);
@@ -128,9 +194,11 @@ class _AddShiftScreenState extends State<AddShiftScreen> {
     if (totalMinutes <= 0 || unpaidBreak >= totalMinutes) {
       setState(() {
         previewShift = null;
-        errorMessage = 'Check your times and unpaid break duration.';
+        previewResult = null;
+        errorMessage = 'Error time must be after start time, and the break'
+                        'must be shorter than the shift';
       });
-      return;
+      return null;
     }
 
     final shift = WorkShift(
@@ -142,10 +210,7 @@ class _AddShiftScreenState extends State<AddShiftScreen> {
       hourlyRate: hourlyRate,
     );
 
-    setState(() {
-      previewShift = shift;
-      errorMessage = null;
-    });
+    return shift;
   }
 
   @override
@@ -165,6 +230,7 @@ class _AddShiftScreenState extends State<AddShiftScreen> {
         children: [
           TextField(
             controller: locationController,
+            onChanged: (_) => invalidatePreview(),
             decoration: const InputDecoration(
               labelText: 'Work location',
               border: OutlineInputBorder(),
@@ -190,12 +256,16 @@ class _AddShiftScreenState extends State<AddShiftScreen> {
             title: const Text('Shift ends the next day'),
             value: endsNextDay,
             onChanged: (value) {
-              setState(() => endsNextDay = value);
+              setState(() {
+                endsNextDay = value;
+              });
+              invalidatePreview();
             },
           ),
           const SizedBox(height: 12),
           TextField(
             controller: breakController,
+            onChanged: (_) => invalidatePreview(),
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(
               labelText: 'Unpaid break (minutes)',
@@ -205,6 +275,7 @@ class _AddShiftScreenState extends State<AddShiftScreen> {
           const SizedBox(height: 16),
           TextField(
             controller: rateController,
+            onChanged: (_) => invalidatePreview(),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(
               labelText: 'Hourly rate (CAD)',
@@ -213,12 +284,14 @@ class _AddShiftScreenState extends State<AddShiftScreen> {
           ),
           const SizedBox(height: 24),
           FilledButton(
-            onPressed: calculateShift,
-            child: const Text('Calculate Shift'),
+            onPressed: (isCalculating || isSaving) ? null : calculateShift,
+            child: Text(isCalculating ? 'Calculating...' : 'Calculate Shift'),
           ),
           const SizedBox(height: 12),
           FilledButton.icon(
-            onPressed: isSaving ? null : saveShift,
+            onPressed: (isSaving || isCalculating || previewShift == null || previewResult == null)
+                        ? null
+                        : saveShift,
             icon: const Icon(Icons.save),
             label: Text(isSaving ? 'Saving...' : 'Save Shift'),
           ),
@@ -238,7 +311,7 @@ class _AddShiftScreenState extends State<AddShiftScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Shift Preview',
+                      'Backend-calculated shift preview',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -246,10 +319,10 @@ class _AddShiftScreenState extends State<AddShiftScreen> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'Paid hours: ${previewShift!.paidHours.toStringAsFixed(2)}',
+                      'Paid hours: ${(previewResult!['paid_hours'] as num).toStringAsFixed(2)}',
                     ),
                     Text(
-                      'Gross base pay: \$${previewShift!.grossBasePay.toStringAsFixed(2)} CAD',
+                      'Gross base pay: \$${(previewResult!['gross_base_pay'] as num).toStringAsFixed(2)} CAD',
                     ),
                   ],
                 ),
