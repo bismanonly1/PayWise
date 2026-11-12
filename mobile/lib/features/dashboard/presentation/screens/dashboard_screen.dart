@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../../work_ledger/presentation/screens/add_shift_screen.dart';
+import '../../../work_ledger/presentation/screens/saved_shifts_screen.dart';
 
 import '../cubit/health_cubit.dart';
 
@@ -51,7 +53,19 @@ class DashboardScreen extends StatelessWidget {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const AddShiftScreen(),
+                      MaterialPageRoute(builder: (_) => const AddShiftScreen()),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  icon: const Icon(Icons.list_alt),
+                  label: const Text('View Sved Shifts'),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SavedShiftsScreen(),
                       ),
                     );
                   },
