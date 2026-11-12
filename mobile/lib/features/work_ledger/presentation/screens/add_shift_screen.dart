@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 import '../../domain/models/work_shift.dart';
+import '../../data/shift_repository.dart';
 
 class AddShiftScreen extends StatefulWidget {
   const AddShiftScreen({super.key});
@@ -18,6 +20,7 @@ class _AddShiftScreenState extends State<AddShiftScreen> {
   TimeOfDay startTime = const TimeOfDay(hour: 9, minute: 0);
   TimeOfDay endTime = const TimeOfDay(hour: 17, minute: 0);
   bool endsNextDay = false;
+  bool isSaving = false;
 
   WorkShift? previewShift;
   String? errorMessage;
@@ -54,6 +57,46 @@ class _AddShiftScreenState extends State<AddShiftScreen> {
 
   DateTime combineDateAndTime(DateTime date, TimeOfDay time) {
     return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+  }
+
+  Future<void> saveShift() async {
+    calculateShift();
+
+    final shift = previewShift;
+    if (shift == null) return;
+
+    setState(() {
+      isSaving = true;
+      errorMessage = null;
+    });
+
+    final client = http.Client();
+
+    try {
+      final saved = await ShiftRepository(client).saveShift(shift);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Shift #${saved['id']} saved successfully')),
+      );
+
+      Navigator.pop(context, true);
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        errorMessage = error.toString();
+      });
+    } finally {
+      client.close();
+
+      if (mounted) {
+        setState(() {
+          isSaving = false;
+        });
+      }
+    }
   }
 
   void calculateShift() {
@@ -172,6 +215,12 @@ class _AddShiftScreenState extends State<AddShiftScreen> {
           FilledButton(
             onPressed: calculateShift,
             child: const Text('Calculate Shift'),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: isSaving ? null : saveShift,
+            icon: const Icon(Icons.save),
+            label: Text(isSaving ? 'Saving...' : 'Save Shift'),
           ),
           if (errorMessage != null) ...[
             const SizedBox(height: 16),
